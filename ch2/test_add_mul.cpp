@@ -83,4 +83,6 @@ int main() {
     cout << "ux = " << ux << endl;
     cout << "uy = " << uy << endl;
     if (x*~y + uy*ux == -x) printf("ok\n");
+
+    return 0;
 }

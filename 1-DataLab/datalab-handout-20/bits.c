@@ -12,6 +12,7 @@
  * it's not good practice to ignore compiler warnings, but in this
  * case it's OK.  
  */
+#include <stdio.h>
 
 #if 0
 /*
@@ -143,7 +144,11 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  /* Use ~ and & to calculate bitXor, with 8 ops */
+  int p = ~x & y;
+  int q = x & ~y;
+  int r = ~(~p & ~q);
+  return r;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,9 +157,8 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+  /* tmin = 0x80000000 */
+  return 1 << 31;
 }
 //2
 /*
@@ -165,7 +169,8 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  int tmp = (x << 1) + 1;
+  return !(~tmp);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -186,7 +191,8 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  /* (flip + 1) is the negation of an integer */
+  return (~x + 1);
 }
 //3
 /* 
@@ -293,4 +299,14 @@ int floatFloat2Int(unsigned uf) {
  */
 unsigned floatPower2(int x) {
     return 2;
+}
+
+int main() {
+  printf("bitXor(4, 5) = %d\n", bitXor(4, 5));
+  printf("tmin() = %d\n", tmin());
+  printf("isTmax(100) = %d\n", isTmax(100));
+  printf("isTmax(0x7FFFFFFF) = %d\n", isTmax(0x7FFFFFFD));
+  printf("negate(1490) = %d\n", negate(1490));
+
+  return 0;
 }
