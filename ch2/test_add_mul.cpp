@@ -44,11 +44,13 @@ int optarith(int x, int y) {
 }
 
 int main() {
+    // Test overflow 
     int a = 2147483645;
     int b = 1111;
     cout << tadd_ok(a, b) << endl;    // return 0, overflow occurs.
 
     cout << tmult_ok(a, b) << endl;   // return 0, overflow occurs.
+
 
     // divide vs. right shift, for negative number
     int c = -12340;
@@ -57,6 +59,7 @@ int main() {
     cout << "-12340 >> 4 = " << c1 << endl;  // -772
     cout << "-12340 / 16 = " << c2 << endl;  // -771
 
+
     // divide vs. right shift, for positive number
     int d = 12340;
     int d1 = d >> 4;
@@ -64,9 +67,11 @@ int main() {
     cout << "12340 >> 4  = " << d1 << endl;  // 771
     cout << "12340 / 16 = " << d2 << endl;  // 771
 
+
     // use div16() function
     cout << "div16(12340) = " << div16(12340) << endl;    // 771
     cout << "div16(-12340) = " << div16(-12340) << endl;  // -771
+
 
     // Test equivalence of arith and optarith
     cout << (arith(5, 5) == optarith(5, 5)) << endl;  // return 1 (true).
@@ -74,6 +79,8 @@ int main() {
     int aa = 0xFFFF;
     printf("%x\n", aa*aa);
 
+
+    // Difference between int and unsigned int
     const int x = 1;
     const int y = 2;
     unsigned ux = x;
@@ -83,6 +90,14 @@ int main() {
     cout << "ux = " << ux << endl;
     cout << "uy = " << uy << endl;
     if (x*~y + uy*ux == -x) printf("ok\n");
+
+
+    // How to determine a number is negative or positive
+    int positive_num = 0;
+    int negative_num = -1;
+    cout << (positive_num >> 31) << endl;
+    cout << (negative_num >> 31) << endl;
+    
 
     return 0;
 }

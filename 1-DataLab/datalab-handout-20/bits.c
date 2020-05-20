@@ -181,7 +181,9 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  /* Construct 0xAAAAAAAA as a mask. */
+  int mask = 0xAA + (0xAA << 8) + (0xAA << 16) + (0xAA << 24);  
+  return !((x & mask) ^ mask);
 }
 /* 
  * negate - return -x 
@@ -205,7 +207,10 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int r1 = (0x39 + (~x + 1)) >> 31;  // if true r1 == 0x0, otherwise, r1 = 0xFFFFFFFF
+  int r2 = (x + (~0x30 + 1)) >> 31;  // if true r2 == 0x0, otherwise, r1 = 0xFFFFFFFF
+
+  return (!r1) & (!r2);  
 }
 /* 
  * conditional - same as x ? y : z 
@@ -215,7 +220,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int t = ~(!x) + 1;
+  return (~t & y) | (t & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -225,7 +231,8 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int r = (y + (~x + 1)) >> 31;
+  return !r;
 }
 //4
 /* 
@@ -237,7 +244,7 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  return ((x | (~x + 1)) >> 31) + 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -252,7 +259,22 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int b16, b8, b4, b2, b1, b0;
+  int sign = x >> 31;  // signed bit, 0x0 if non-negative, 0xFFFFFFFF if negative
+  x = (sign & ~x) | (~sign & x);  // If is negative number, flip it. 
+
+  b16 = !!(x >> 16) << 4;  // whether most significant 16 bits have 1. If yes, b16 =16, if not, b16 = 0
+  x = x >> b16;  // If yes, right shift 16 bits; if no, do not right shift.
+  b8 = !!(x >> 8) << 3;  // whether the rest most significant 8 bits have 1.
+  x = x >> b8;
+  b4 = !!(x >> 4) << 2;
+  x = x >> b4;
+  b2 = !!(x >> 2) << 1;
+  x = x >> b2;
+  b1 = !!(x >> 1);
+  x = x >> b1;
+  b0 = x;
+  return b16 + b8 + b4 + b2 + b1 + b0 + 1;  // 1 is the sign bit.
 }
 //float
 /* 
@@ -302,11 +324,41 @@ unsigned floatPower2(int x) {
 }
 
 int main() {
-  printf("bitXor(4, 5) = %d\n", bitXor(4, 5));
-  printf("tmin() = %d\n", tmin());
+  printf("bitXor(4, 5) = %d\n\n", bitXor(4, 5));
+
+  printf("tmin() = %d\n\n", tmin());
+
   printf("isTmax(100) = %d\n", isTmax(100));
-  printf("isTmax(0x7FFFFFFF) = %d\n", isTmax(0x7FFFFFFD));
-  printf("negate(1490) = %d\n", negate(1490));
+  printf("isTmax(0x7FFFFFFF) = %d\n\n", isTmax(0x7FFFFFFF));
+
+  printf("allOddBits(0xAAAAAAAA) = %d\n", allOddBits(0xAAAAAAAA));
+  printf("allOddBits(0xFFFFFFFF) = %d\n", allOddBits(0xFFFFFFFF));
+  printf("allOddBits(0xFFFFFFFD) = %d\n\n", allOddBits(0xFFFFFFFD));
+
+  printf("isAsciiDigit(0x39) = %d\n", isAsciiDigit(0x39));
+  printf("isAsciiDigit(0x30) = %d\n", isAsciiDigit(0x30));
+  printf("isAsciiDigit(0x3a) = %d\n", isAsciiDigit(0x3a));
+  printf("isAsciiDigit(0x05) = %d\n\n", isAsciiDigit(0x05));
+
+  printf("negate(1490) = %d\n\n", negate(1490));
+
+  printf("conditional(2,4,5) = %d\n", conditional(2, 4, 5));
+  printf("conditional(0,4,5) = %d\n\n", conditional(0, 4, 5));
+
+  printf("isLessOrEqual(4,5) = %d\n", isLessOrEqual(4, 5));
+  printf("isLessOrEqual(4,4) = %d\n", isLessOrEqual(4, 4));
+  printf("isLessOrEqual(5,4) = %d\n\n", isLessOrEqual(5, 4));
+
+  printf("logicalNeg(1) = %d\n", logicalNeg(1));
+  printf("logicalNeg(0) = %d\n", logicalNeg(0));
+  printf("logicalNeg(-30) = %d\n\n", logicalNeg(-30));
+
+  printf("howManyBits(12) = %d\n", howManyBits(12));
+  printf("howManyBits(298) = %d\n", howManyBits(298));
+  printf("howManyBits(-5) = %d\n", howManyBits(-5));
+  printf("howManyBits(0) = %d\n", howManyBits(0));
+  printf("howManyBits(-1) = %d\n", howManyBits(-1));
+  printf("howManyBits(0x80000000) = %d\n", howManyBits(0x80000000));
 
   return 0;
 }
