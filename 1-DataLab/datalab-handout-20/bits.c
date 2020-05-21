@@ -169,7 +169,7 @@ int tmin(void) {
  */
 int isTmax(int x) {
   int tmp = (x << 1) + 1;
-  return !(~tmp);
+  return !(~tmp | x >> 31);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -230,9 +230,12 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  int r = (y + (~x + 1)) >> 31;
-  return !r;
+  int sx = (x >> 31) & 0x1;  // sign bit of x
+  int sy = (y >> 31) & 0x1;  // sign bit of y
+  int sdiff = ((y + (~x + 1)) >> 31) & 0x1;  // sign bit of y-x
+  return (((sx ^ sy) & sx) | !sdiff & !(sx ^ sy));
 }
+
 //4
 /* 
  * logicalNeg - implement the ! operator, using all of 
@@ -324,6 +327,7 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
+  
   int exp = (uf >> 23) & 0xFF; 
   int frac = uf & 0x7FFFFF;
   int sign = uf & (1 << 31);  // negative 0x80000000, positive 0x0.
@@ -334,12 +338,41 @@ int floatFloat2Int(unsigned uf) {
 
   int frac1 = frac | 0x800000;  // Add the hidden 1 in front of frac
   int biasedExp = exp - 127; // E = e - Bias, Bias = 127 = 0x7F, -bias = 0xFFFFFF81
-  int shifts = biasedExp - 23;  // how many right shift bits
-  if (shifts > 0) frac1 = frac1 << shifts;
-  else frac1 = frac1 >> -shifts;
+
+  if (biasedExp > 31) return 0x80000000;
+  else if (biasedExp < 0) return 0;
+
+  if (biasedExp > 23) frac1 <<= (biasedExp - 23);
+  else frac1 >>= (23 - biasedExp);
 
   if (sign) return ~frac1 + 1;  // if negative number
+  else if (frac1 >> 31) return 0x80000000;  // if frac1 overflows, return 0x80000000;
   else return frac1;
+
+/*
+  int s_ = uf >> 31;
+  int exp_ = ((uf & 0x7f800000) >> 23) - 127;
+  int frac_ = (uf & 0x007fffff) | 0x00800000;
+  if (!(uf & 0x7fffffff))
+    return 0;
+
+  if (exp_ > 31)
+    return 0x80000000;
+  if (exp_ < 0)
+    return 0;
+
+  if (exp_ > 23)
+    frac_ <<= (exp_ - 23);
+  else
+    frac_ >>= (23 - exp_);
+
+  if (!((frac_ >> 31) ^ s_))
+    return frac_;
+  else if (frac_ >> 31)
+    return 0x80000000;
+  else
+    return ~frac_ + 1;
+  */
 }
 
 /* 
@@ -363,48 +396,5 @@ unsigned floatPower2(int x) {
 }
 
 // int main() {
-//   printf("bitXor(4, 5) = %d\n\n", bitXor(4, 5));
-
-//   printf("tmin() = %d\n\n", tmin());
-
-//   printf("isTmax(100) = %d\n", isTmax(100));
-//   printf("isTmax(0x7FFFFFFF) = %d\n\n", isTmax(0x7FFFFFFF));
-
-//   printf("allOddBits(0xAAAAAAAA) = %d\n", allOddBits(0xAAAAAAAA));
-//   printf("allOddBits(0xFFFFFFFF) = %d\n", allOddBits(0xFFFFFFFF));
-//   printf("allOddBits(0xFFFFFFFD) = %d\n\n", allOddBits(0xFFFFFFFD));
-
-//   printf("isAsciiDigit(0x39) = %d\n", isAsciiDigit(0x39));
-//   printf("isAsciiDigit(0x30) = %d\n", isAsciiDigit(0x30));
-//   printf("isAsciiDigit(0x3a) = %d\n", isAsciiDigit(0x3a));
-//   printf("isAsciiDigit(0x05) = %d\n\n", isAsciiDigit(0x05));
-
-//   printf("negate(1490) = %d\n\n", negate(1490));
-
-//   printf("conditional(2,4,5) = %d\n", conditional(2, 4, 5));
-//   printf("conditional(0,4,5) = %d\n\n", conditional(0, 4, 5));
-
-//   printf("isLessOrEqual(4,5) = %d\n", isLessOrEqual(4, 5));
-//   printf("isLessOrEqual(4,4) = %d\n", isLessOrEqual(4, 4));
-//   printf("isLessOrEqual(5,4) = %d\n\n", isLessOrEqual(5, 4));
-
-//   printf("logicalNeg(1) = %d\n", logicalNeg(1));
-//   printf("logicalNeg(0) = %d\n", logicalNeg(0));
-//   printf("logicalNeg(-30) = %d\n\n", logicalNeg(-30));
-
-//   printf("howManyBits(12) = %d\n", howManyBits(12));
-//   printf("howManyBits(298) = %d\n", howManyBits(298));
-//   printf("howManyBits(-5) = %d\n", howManyBits(-5));
-//   printf("howManyBits(0) = %d\n", howManyBits(0));
-//   printf("howManyBits(-1) = %d\n", howManyBits(-1));
-//   printf("howManyBits(0x80000000) = %d\n\n", howManyBits(0x80000000));
-
-//   printf("floatScale2(Infinity) = %x\n", floatScale2(0x7F800000));  // INFINITY
-//   printf("floatScale2(-Infinity) = %x\n", floatScale2(0xFF800000));  // INFINITY
-//   printf("floatScale2(NAN) = %x\n", floatScale2(0x7F800001));  // NAN
-//   printf("floatScale2(7C40FFFF) = %x\n", floatScale2(0x7C40FFFF));  // Normal number
-//   printf("floatScale2(FC40FFFF) = %x\n", floatScale2(0xFC40FFFF));  // Normal number
-//   printf("floatScale2(-1) = %x\n\n", floatScale2(0x80000001));  // De-norm number
-
-//   return 0;
+//   floatFloat2Int(0x800000);
 // }

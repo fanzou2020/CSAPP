@@ -47,11 +47,13 @@ int tmin(void) {
  */
 int isTmax(int x) {
   int tmp = (x << 1) + 1;
-  return !(~tmp);
+  return !(~tmp | (x >> 31));
 }
 ```
-`tmp = (Tmax << 1) + 1 = 0xFFFFFFFF`    
-`!(~tmp)` will return `1`, if `x` is `Tmax`. 
+`Tmax = 0x7FFFFFFF`, `tmp = (Tmax << 1) + 1 = 0xFFFFFFFF`    
+`!(~tmp)` will return `1`, if `x` is `Tmax`.    
+We also need to eliminate `0xFFFFFFFF`, which give the same result, 
+`!(~(x >> 31))` will return 
 
 ### allOddBits
 ```C
@@ -145,8 +147,10 @@ Thus `~t & y` will return `y` if `x` is true; return `0x0` if `x` is false.
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  int r = (y + (~x + 1)) >> 31;
-  return !r;
+  int sx = (x >> 31) & 0x1;  // sign bit of x
+  int sy = (y >> 31) & 0x1;  // sign bit of y
+  int sdiff = ((y + (~x + 1)) >> 31) & 0x1;  // sign bit of y-x
+  return (((sx ^ sy) & sx) | !sdiff & !(sx ^ sy));
 }
 ```
 Return `1` if `(y - x) >= 0`, similar to `isAsciiDigit()`.   
@@ -270,7 +274,7 @@ if `denorm`, `f << 1`.
 
 
 ### floatFloat2Int
-```C
+```c
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
  *   for floating point argument f.
@@ -284,14 +288,59 @@ if `denorm`, `f << 1`.
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  
+  int exp = (uf >> 23) & 0xFF; 
+  int frac = uf & 0x7FFFFF;
+  int sign = uf & (1 << 31);  // negative 0x80000000, positive 0x0.
+  
+  if (exp == 0xFF) return 0x80000000u;  // if out of range, return 0x80000000
+
+  if (exp == 0x0) return 0;  // if de-norm number, means its range is (-1, 1)
+
+  int frac1 = frac | 0x800000;  // Add the hidden 1 in front of frac
+  int biasedExp = exp - 127; // E = e - Bias, Bias = 127 = 0x7F, -bias = 0xFFFFFF81
+
+  if (biasedExp > 31) return 0x80000000;
+  else if (biasedExp < 0) return 0;
+
+  if (biasedExp > 23) frac1 <<= (biasedExp - 23);
+  else frac1 >>= (23 - biasedExp);
+
+  if (sign) return ~frac1 + 1;  // if negative number
+  else if (frac1 >> 31) return 0x80000000;  // if frac1 overflows, return 0x80000000;
+  else return frac1;
+
+/*
+  int s_ = uf >> 31;
+  int exp_ = ((uf & 0x7f800000) >> 23) - 127;
+  int frac_ = (uf & 0x007fffff) | 0x00800000;
+  if (!(uf & 0x7fffffff))
+    return 0;
+
+  if (exp_ > 31)
+    return 0x80000000;
+  if (exp_ < 0)
+    return 0;
+
+  if (exp_ > 23)
+    frac_ <<= (exp_ - 23);
+  else
+    frac_ >>= (23 - exp_);
+
+  if (!((frac_ >> 31) ^ s_))
+    return frac_;
+  else if (frac_ >> 31)
+    return 0x80000000;
+  else
+    return ~frac_ + 1;
+  */
 }
 ```
 
 
 
 ### floatPower2
-```C
+```c
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
  *   (2.0 raised to the power x) for any 32-bit integer x.
@@ -306,6 +355,9 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int exp = x + 127;
+  if (exp <= 0) return 0;
+  if (exp >= 255) return 0xff << 23;
+  return exp << 23;
 }
 ```
