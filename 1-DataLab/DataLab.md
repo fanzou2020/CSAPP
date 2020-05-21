@@ -192,7 +192,22 @@ If `x != 0x0`, `(x | (~x + 1)) >> 31` will give us `0xFFFFFFFF`. After `+1`, we 
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int b16, b8, b4, b2, b1, b0;
+  int sign = x >> 31;  // signed bit, 0x0 if non-negative, 0xFFFFFFFF if negative
+  x = (sign & ~x) | (~sign & x);  // If is negative number, flip it. 
+
+  b16 = !!(x >> 16) << 4;  // whether most significant 16 bits have 1. If yes, b16 =16, if not, b16 = 0
+  x = x >> b16;  // If yes, right shift 16 bits; if no, do not right shift.
+  b8 = !!(x >> 8) << 3;  // whether the rest most significant 8 bits have 1.
+  x = x >> b8;
+  b4 = !!(x >> 4) << 2;
+  x = x >> b4;
+  b2 = !!(x >> 2) << 1;
+  x = x >> b2;
+  b1 = !!(x >> 1);
+  x = x >> b1;
+  b0 = x;
+  return b16 + b8 + b4 + b2 + b1 + b0 + 1;  // 1 is the sign bit.
 }
 ```
 If this number is positive, we want to know the first appearance of `1`; if this number is negative, we need the first appearance of `0`.   
@@ -225,6 +240,72 @@ Continue this process until we reach `b0`. Then sum up `b16` to `b0` and the sig
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
+  int exp = (uf >> 23) & 0xFF;  // Get the exponent bits.
+  int sign = uf & (1 << 31);  // Most significant sign bit
+  if (exp == 0xFF) {  // If uf is NAN or Infinity, return uf
+    return uf;
+  }
+
+  if (exp == 0x0) { // If uf is denorm number, 
+    return (uf << 1) | sign;  // Left shift by 1, and then add sign bit
+  } 
+
+  // normal number
+  exp = exp + 1;  
+  if (exp == 0xFF) {  // if exp+1 is equal to 0xFF, return Infinity
+    return 0x7F800000 | sign;
+  }
+  else {  // exp+1 not equal to 0xFF, no overflow happens.
+    int frac = uf & 0x7FFFFF;  // get the fraction bits 
+    return (frac | exp << 23) | sign;  // add frac, exp, sign together.
+  }
+}
+```
+If `NAN`, return argument; 
+if `INF`, return argument;
+if `norm`, `E = E + 1`, if `++E` equals to `0xFF`, return `Infinity`.
+if `denorm`, `f << 1`.
+
+
+
+
+### floatFloat2Int
+```C
+/* 
+ * floatFloat2Int - Return bit-level equivalent of expression (int) f
+ *   for floating point argument f.
+ *   Argument is passed as unsigned int, but
+ *   it is to be interpreted as the bit-level representation of a
+ *   single-precision floating point value.
+ *   Anything out of range (including NaN and infinity) should return
+ *   0x80000000u.
+ *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
+ *   Max ops: 30
+ *   Rating: 4
+ */
+int floatFloat2Int(unsigned uf) {
   return 2;
+}
+```
+
+
+
+### floatPower2
+```C
+/* 
+ * floatPower2 - Return bit-level equivalent of the expression 2.0^x
+ *   (2.0 raised to the power x) for any 32-bit integer x.
+ *
+ *   The unsigned value that is returned should have the identical bit
+ *   representation as the single-precision floating-point number 2.0^x.
+ *   If the result is too small to be represented as a denorm, return
+ *   0. If too large, return +INF.
+ * 
+ *   Legal ops: Any integer/unsigned operations incl. ||, &&. Also if, while 
+ *   Max ops: 30 
+ *   Rating: 4
+ */
+unsigned floatPower2(int x) {
+    return 2;
 }
 ```

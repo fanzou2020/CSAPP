@@ -99,5 +99,9 @@ int main() {
     cout << (negative_num >> 31) << endl;
     
 
+    // test cast from float to int
+    float f1 = -2.234;
+    cout << "(int) f1 = " << (int) f1 << endl;
+
     return 0;
 }
