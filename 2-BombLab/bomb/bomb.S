@@ -394,6 +394,7 @@ Disassembly of section .text:
   400f43:	48 83 ec 18          	sub    $0x18,%rsp
   400f47:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
   400f4c:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
+
   /* read two number from input, if input number less than 2, explode bomb */
   400f51:	be cf 25 40 00       	mov    $0x4025cf,%esi /* (0x4025cf) -> %d %d, read two number*/
   400f56:	b8 00 00 00 00       	mov    $0x0,%eax
@@ -453,21 +454,23 @@ Disassembly of section .text:
 
 0000000000400fce <func4>:
   400fce:	48 83 ec 08          	sub    $0x8,%rsp
-  400fd2:	89 d0                	mov    %edx,%eax
-  400fd4:	29 f0                	sub    %esi,%eax
-  400fd6:	89 c1                	mov    %eax,%ecx
-  400fd8:	c1 e9 1f             	shr    $0x1f,%ecx
-  400fdb:	01 c8                	add    %ecx,%eax
-  400fdd:	d1 f8                	sar    %eax
-  400fdf:	8d 0c 30             	lea    (%rax,%rsi,1),%ecx
-  400fe2:	39 f9                	cmp    %edi,%ecx
-  400fe4:	7e 0c                	jle    400ff2 <func4+0x24>
-  400fe6:	8d 51 ff             	lea    -0x1(%rcx),%edx
-  400fe9:	e8 e0 ff ff ff       	callq  400fce <func4>
+  400fd2:	89 d0                	mov    %edx,%eax  
+  400fd4:	29 f0                	sub    %esi,%eax  
+  400fd6:	89 c1                	mov    %eax,%ecx  
+  400fd8:	c1 e9 1f             	shr    $0x1f,%ecx  
+  400fdb:	01 c8                	add    %ecx,%eax  
+  400fdd:	d1 f8                	sar    %eax  /* 7 */
+  400fdf:	8d 0c 30             	lea    (%rax,%rsi,1),%ecx 
+  400fe2:	39 f9                	cmp    %edi,%ecx  /* 7 : n1 */
+  400fe4:	7e 0c                	jle    400ff2 <func4+0x24> 
+  400fe6:	8d 51 ff             	lea    -0x1(%rcx),%edx  
+  400fe9:	e8 e0 ff ff ff       	callq  400fce <func4> 
   400fee:	01 c0                	add    %eax,%eax
   400ff0:	eb 15                	jmp    401007 <func4+0x39>
+
+  /* if k <= x :  */
   400ff2:	b8 00 00 00 00       	mov    $0x0,%eax
-  400ff7:	39 f9                	cmp    %edi,%ecx
+  400ff7:	39 f9                	cmp    %edi,%ecx  /* if k == x, return */
   400ff9:	7d 0c                	jge    401007 <func4+0x39>
   400ffb:	8d 71 01             	lea    0x1(%rcx),%esi
   400ffe:	e8 cb ff ff ff       	callq  400fce <func4>
@@ -477,21 +480,21 @@ Disassembly of section .text:
 
 000000000040100c <phase_4>:
   40100c:	48 83 ec 18          	sub    $0x18,%rsp
-  401010:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
-  401015:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
-  40101a:	be cf 25 40 00       	mov    $0x4025cf,%esi
+  401010:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx  /* %rcx = %rsp+12*/
+  401015:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx  /* %rdx = %rsp+8 */
+  40101a:	be cf 25 40 00       	mov    $0x4025cf,%esi  /* (0x4025cf) -> %d %d, read two number*/
   40101f:	b8 00 00 00 00       	mov    $0x0,%eax
   401024:	e8 c7 fb ff ff       	callq  400bf0 <__isoc99_sscanf@plt>
   401029:	83 f8 02             	cmp    $0x2,%eax
-  40102c:	75 07                	jne    401035 <phase_4+0x29>
-  40102e:	83 7c 24 08 0e       	cmpl   $0xe,0x8(%rsp)
-  401033:	76 05                	jbe    40103a <phase_4+0x2e>
+  40102c:	75 07                	jne    401035 <phase_4+0x29>  /* if not input 2 numbers, explode bomb */
+  40102e:	83 7c 24 08 0e       	cmpl   $0xe,0x8(%rsp)  /* compare n_1 : 14 */
+  401033:	76 05                	jbe    40103a <phase_4+0x2e>  /* if n_1 <= 14, safe, otherwise, explode*/
   401035:	e8 00 04 00 00       	callq  40143a <explode_bomb>
-  40103a:	ba 0e 00 00 00       	mov    $0xe,%edx
-  40103f:	be 00 00 00 00       	mov    $0x0,%esi
-  401044:	8b 7c 24 08          	mov    0x8(%rsp),%edi
-  401048:	e8 81 ff ff ff       	callq  400fce <func4>
-  40104d:	85 c0                	test   %eax,%eax
+  40103a:	ba 0e 00 00 00       	mov    $0xe,%edx  /* 0xe as the third arg */
+  40103f:	be 00 00 00 00       	mov    $0x0,%esi  /* 0x0 as the second arg */
+  401044:	8b 7c 24 08          	mov    0x8(%rsp),%edi  /* n_1, as the first arg */
+  401048:	e8 81 ff ff ff       	callq  400fce <func4>  /* call func4 */
+  40104d:	85 c0                	test   %eax,%eax  /* if return not 0, explode bomb*/
   40104f:	75 07                	jne    401058 <phase_4+0x4c>
   401051:	83 7c 24 0c 00       	cmpl   $0x0,0xc(%rsp)
   401056:	74 05                	je     40105d <phase_4+0x51>
@@ -512,26 +515,33 @@ Disassembly of section .text:
   401082:	74 4e                	je     4010d2 <phase_5+0x70>
   401084:	e8 b1 03 00 00       	callq  40143a <explode_bomb>
   401089:	eb 47                	jmp    4010d2 <phase_5+0x70>
-  40108b:	0f b6 0c 03          	movzbl (%rbx,%rax,1),%ecx
+
+  /* when strlen(input)== 6, for (i = 0 to 6) */
+  40108b:	0f b6 0c 03          	movzbl (%rbx,%rax,1),%ecx  /* c = s.charAt(i) */
   40108f:	88 0c 24             	mov    %cl,(%rsp)
-  401092:	48 8b 14 24          	mov    (%rsp),%rdx
-  401096:	83 e2 0f             	and    $0xf,%edx
-  401099:	0f b6 92 b0 24 40 00 	movzbl 0x4024b0(%rdx),%edx
-  4010a0:	88 54 04 10          	mov    %dl,0x10(%rsp,%rax,1)
+  401092:	48 8b 14 24          	mov    (%rsp),%rdx  /* move c to %rdx */
+  401096:	83 e2 0f             	and    $0xf,%edx  /* %edx store the last 4-bit of this char */
+  401099:	0f b6 92 b0 24 40 00 	movzbl 0x4024b0(%rdx),%edx  /* (0x4024b0 + %edx) is a char, in ss5.jpg */
+  4010a0:	88 54 04 10          	mov    %dl,0x10(%rsp,%rax,1) /* store that char in (%rsp+0x10) */
   4010a4:	48 83 c0 01          	add    $0x1,%rax
   4010a8:	48 83 f8 06          	cmp    $0x6,%rax
   4010ac:	75 dd                	jne    40108b <phase_5+0x29>
+
+  /* check whether string equal to "flyers" */ 
   4010ae:	c6 44 24 16 00       	movb   $0x0,0x16(%rsp)
   4010b3:	be 5e 24 40 00       	mov    $0x40245e,%esi
   4010b8:	48 8d 7c 24 10       	lea    0x10(%rsp),%rdi
   4010bd:	e8 76 02 00 00       	callq  401338 <strings_not_equal>
-  4010c2:	85 c0                	test   %eax,%eax
+  4010c2:	85 c0                	test   %eax,%eax  /* if string equal, return 0, */
   4010c4:	74 13                	je     4010d9 <phase_5+0x77>
   4010c6:	e8 6f 03 00 00       	callq  40143a <explode_bomb>
   4010cb:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
   4010d0:	eb 07                	jmp    4010d9 <phase_5+0x77>
+
+  /* strlen(input) == 6, */
   4010d2:	b8 00 00 00 00       	mov    $0x0,%eax
   4010d7:	eb b2                	jmp    40108b <phase_5+0x29>
+
   4010d9:	48 8b 44 24 18       	mov    0x18(%rsp),%rax
   4010de:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
   4010e5:	00 00 
@@ -553,12 +563,15 @@ Disassembly of section .text:
   401106:	e8 51 03 00 00       	callq  40145c <read_six_numbers>
   40110b:	49 89 e6             	mov    %rsp,%r14
   40110e:	41 bc 00 00 00 00    	mov    $0x0,%r12d
+
+  /* Section 1, check 6 numbers are distinct */
   401114:	4c 89 ed             	mov    %r13,%rbp
-  401117:	41 8b 45 00          	mov    0x0(%r13),%eax
+  401117:	41 8b 45 00          	mov    0x0(%r13),%eax /* n1 */
   40111b:	83 e8 01             	sub    $0x1,%eax
-  40111e:	83 f8 05             	cmp    $0x5,%eax
+  40111e:	83 f8 05             	cmp    $0x5,%eax /* n1 <= 6 */
   401121:	76 05                	jbe    401128 <phase_6+0x34>
   401123:	e8 12 03 00 00       	callq  40143a <explode_bomb>
+
   401128:	41 83 c4 01          	add    $0x1,%r12d
   40112c:	41 83 fc 06          	cmp    $0x6,%r12d
   401130:	74 21                	je     401153 <phase_6+0x5f>
@@ -573,33 +586,45 @@ Disassembly of section .text:
   40114b:	7e e8                	jle    401135 <phase_6+0x41>
   40114d:	49 83 c5 04          	add    $0x4,%r13
   401151:	eb c1                	jmp    401114 <phase_6+0x20>
+
+  /*********** Section 2 , ni = 7 - ni, for i = 1 to 6 *****/
   401153:	48 8d 74 24 18       	lea    0x18(%rsp),%rsi
   401158:	4c 89 f0             	mov    %r14,%rax
   40115b:	b9 07 00 00 00       	mov    $0x7,%ecx
   401160:	89 ca                	mov    %ecx,%edx
-  401162:	2b 10                	sub    (%rax),%edx
-  401164:	89 10                	mov    %edx,(%rax)
+  401162:	2b 10                	sub    (%rax),%edx /* 7-n1 */
+  401164:	89 10                	mov    %edx,(%rax) /* n1 = 7-n1 */
   401166:	48 83 c0 04          	add    $0x4,%rax
   40116a:	48 39 f0             	cmp    %rsi,%rax
   40116d:	75 f1                	jne    401160 <phase_6+0x6c>
+  /********************* End of section 2 *******************/
+
+  /* Section 3 initialize struct, contian ni and next Node* */
+  /*  */
   40116f:	be 00 00 00 00       	mov    $0x0,%esi
   401174:	eb 21                	jmp    401197 <phase_6+0xa3>
   401176:	48 8b 52 08          	mov    0x8(%rdx),%rdx
+
   40117a:	83 c0 01             	add    $0x1,%eax
   40117d:	39 c8                	cmp    %ecx,%eax
   40117f:	75 f5                	jne    401176 <phase_6+0x82>
   401181:	eb 05                	jmp    401188 <phase_6+0x94>
+
   401183:	ba d0 32 60 00       	mov    $0x6032d0,%edx
   401188:	48 89 54 74 20       	mov    %rdx,0x20(%rsp,%rsi,2)
   40118d:	48 83 c6 04          	add    $0x4,%rsi
   401191:	48 83 fe 18          	cmp    $0x18,%rsi
   401195:	74 14                	je     4011ab <phase_6+0xb7>
+
   401197:	8b 0c 34             	mov    (%rsp,%rsi,1),%ecx
   40119a:	83 f9 01             	cmp    $0x1,%ecx
   40119d:	7e e4                	jle    401183 <phase_6+0x8f>
   40119f:	b8 01 00 00 00       	mov    $0x1,%eax
   4011a4:	ba d0 32 60 00       	mov    $0x6032d0,%edx
   4011a9:	eb cb                	jmp    401176 <phase_6+0x82>
+  /*********************************************************/
+
+  /* Section 4: change the next */ 
   4011ab:	48 8b 5c 24 20       	mov    0x20(%rsp),%rbx
   4011b0:	48 8d 44 24 28       	lea    0x28(%rsp),%rax
   4011b5:	48 8d 74 24 50       	lea    0x50(%rsp),%rsi
@@ -611,6 +636,8 @@ Disassembly of section .text:
   4011cb:	74 05                	je     4011d2 <phase_6+0xde>
   4011cd:	48 89 d1             	mov    %rdx,%rcx
   4011d0:	eb eb                	jmp    4011bd <phase_6+0xc9>
+  /*********************************************************/
+
   4011d2:	48 c7 42 08 00 00 00 	movq   $0x0,0x8(%rdx)
   4011d9:	00 
   4011da:	bd 05 00 00 00       	mov    $0x5,%ebp
