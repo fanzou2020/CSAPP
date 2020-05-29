@@ -8,10 +8,11 @@
             "args": [
                 "-std=c++17",
                 "-stdlib=libc++",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
                 "-g",
                 "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "./cachelab.c"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
