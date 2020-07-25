@@ -84,18 +84,6 @@ void unix_error(char *msg);
 void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
-void Sigfillset(sigset_t *set);
-void Sigemptyset(sigset_t *set);
-void Sigaddset(sigset_t *set, int signum);
-void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
-pid_t Fork(void);
-void Setpgid(pid_t pid, pid_t pgid);
-void Execve(const char *filename, char *const argv[], char *const envp[]);
-pid_t Waitpid(pid_t pid, int *iptr, int options);
-void Kill(pid_t pid, int signum);
-// ssize_t sio_puts(char s[]); /* Put string */
-// ssize_t sio_putl(long v);    /* Put long */
-// void sio_error(char s[]);     /* Put error message and exit */
 
 /*
  * main - The shell's main routine 
@@ -177,55 +165,6 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
-    char *argv[MAXARGS];  /* Argument list execve() */
-    char buf[MAXLINE];    /* Holds modified command line */
-    int bg;               /* Should the job run in bg of fg? */
-    pid_t pid;            /* Process id */
-
-    /* Initialize signal masks. */
-    sigset_t mask_all, mask_one, prev_one;
-    Sigfillset(&mask_all);
-    Sigemptyset(&mask_one);
-    Sigaddset(&mask_one, SIGCHLD);
-
-    strcpy(buf, cmdline);
-    bg = parseline(buf, argv);  /* Parse command line */
-
-    if (argv[0] == NULL) {
-        return;
-    }
-
-    /* Not a builtin command, run job in child process */
-    if (!builtin_cmd(argv)) {
-        Sigprocmask(SIG_BLOCK, &mask_one, &prev_one);  /* Block SIGCHLD to avoid Race */
-
-        if ((pid = Fork()) == 0) { /* Child process */
-            Setpgid(0, 0);  /* Put the child in new process group whose pgid is identical to child's pid*/
-
-            Sigprocmask(SIG_SETMASK, &prev_one, NULL);  /* Unblock SIGCHLD */
-
-            Execve(argv[0], argv, environ);
-        }
-
-        /* Parent process */
-        Sigprocmask(SIG_BLOCK, &mask_all, NULL);  /* Mask all signals */
-
-        addjob(jobs, pid, bg+1, cmdline);  /* Add job into joblist, bg+1 indicates the state of job */
-
-        if (bg) {
-            // listjobs(jobs);
-            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
-        }
-
-        Sigprocmask(SIG_SETMASK, &prev_one, NULL); /* Restore previous sigset */
-
-        /* If is foreground job, wait for SIGCHLD to be received */
-        if (!bg) {
-            // listjobs(jobs);
-            waitfg(pid);
-        } 
-    } 
-
     return;
 }
 
@@ -292,15 +231,6 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    const char * cmd = argv[0];
-
-    if (strcmp(cmd, "quit") == 0) exit(0);
-
-    if (strcmp(cmd, "jobs") == 0) {
-        listjobs(jobs);
-        return 1;
-    }
-
     return 0;     /* not a builtin command */
 }
 
@@ -317,14 +247,6 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    /* Follow the recommendation in handout, use a busy loop around the sleep function in waitfg,
-    and do the jobs of reaping children in signal handler */
-    while (1) {
-        sleep(1);
-        if (fgpid(jobs) != pid)  /* Exit loop when pid is not the foreground job. */
-            break;
-    }
-
     return;
 }
 
@@ -341,44 +263,6 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    int olderrno = errno;
-    sigset_t mask_all, prev_all;
-    int child_status;
-    pid_t pid;
-
-    Sigfillset(&mask_all);
-
-    /* Reap all children */
-    while ((pid = waitpid(-1, &child_status, WNOHANG|WUNTRACED)) > 0) {
-        
-        /* Normally exit */
-        if (WIFEXITED(child_status)) {
-            Sigprocmask(SIG_BLOCK, &mask_all, &prev_all);  /* Block all signals */
-            deletejob(jobs, pid);
-            Sigprocmask(SIG_SETMASK, &prev_all, NULL);  /* Restore */
-        }
-
-        /* SIGSTP, do not delete job */
-        if (WIFSTOPPED(child_status)) {
-            printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, WSTOPSIG(child_status));
-        }
-
-        /* Terminated by signals that wat not caught, for example, SIGINT (ctrl-C) */
-        if (WIFSIGNALED(child_status)) {
-            printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(child_status));
-            Sigprocmask(SIG_BLOCK, &mask_all, &prev_all);  /* Block all signals */
-            deletejob(jobs, pid);
-            Sigprocmask(SIG_SETMASK, &prev_all, NULL);  /* Restore */
-        }
-    }
-
-    /* errno can be 4, interrupted, so comment this out.
-    if (errno != ECHILD) {
-        printf("waitpid error, errono = %d", errno);
-    }
-    */
-
-    errno = olderrno;
     return;
 }
 
@@ -389,15 +273,6 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    int olderrno = errno;
-
-    pid_t fg_pid = fgpid(jobs);  /* Get foreground pid */
-
-    if (fg_pid == 0) return;
-
-    Kill(-fg_pid, SIGINT);  /* Send SIGINT to foreground process, the default action is Terminate */
-
-    errno = olderrno;
     return;
 }
 
@@ -408,23 +283,6 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    int olderrno = errno;
-    sigset_t mask_all, prev_all;
-    Sigfillset(&mask_all); 
-
-    pid_t fg_pid = fgpid(jobs);  /* Get foreground pid */
-
-    if (fg_pid == 0) return;
-
-    /* Update Job status to stopped in jobs list */
-    Sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
-    struct job_t * fg_job= getjobpid(jobs, fg_pid);
-    fg_job->state = ST;
-    Sigprocmask(SIG_SETMASK, &prev_all, NULL);
-
-    Kill(-fg_pid, SIGTSTP); /* Send SIGTSTP to foreground process group */
-
-    errno = olderrno;
     return;
 }
 
@@ -647,100 +505,5 @@ void sigquit_handler(int sig)
     exit(1);
 }
 
-/*
- * Sigfillset - wrapper function for sigfillset
- */
-void Sigfillset(sigset_t *set) {
-    if (sigfillset(set) < 0) unix_error("Sigfillset error");
-    return;
-}
 
-/* 
- * Sigemptyset - wapper function for sigemptyset
- */
-void Sigemptyset(sigset_t *set) {
-    if (sigemptyset(set) < 0) unix_error("Sigemptyset error");
-    return;
-}
 
-/*
- * Sigaddset - wrapper function for sigaddset
- */
-void Sigaddset(sigset_t *set, int signum) {
-    if (sigaddset(set, signum) < 0) unix_error("Sigaddset error");
-    return;
-}
-
-/*
- * Sigprocmask - wrapper function for sigprocmask
- */
-void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
-    if (sigprocmask(how, set, oldset) < 0) unix_error("Sigprocmask error");
-    return;
-}
-
-/*
- * Fork - wrapper function for fork
- */
-pid_t Fork(void) {
-    pid_t pid;
-
-    if ((pid = fork()) < 0) unix_error("Fork error");
-    return pid;
-}
-
-/*
- * Setpid - wrapper function for setpid
- */
-void Setpgid(pid_t pid, pid_t pgid) {
-    int rc;
-
-    if ((rc = setpgid(pid, pgid)) < 0) unix_error("Setpgid error");
-    return;
-}
-
-void Execve(const char *filename, char *const argv[], char *const envp[])
-{
-    if (execve(filename, argv, envp) < 0)
-        unix_error("Execve error");
-}
-
-pid_t Waitpid(pid_t pid, int *iptr, int options)
-{
-    pid_t retpid;
-
-    if ((retpid = waitpid(pid, iptr, options)) < 0)
-        unix_error("Waitpid error");
-    return (retpid);
-}
-
-void Kill(pid_t pid, int signum)
-{
-    int rc;
-
-    if ((rc = kill(pid, signum)) < 0)
-        unix_error("Kill error");
-}
-
-// /* Public Sio functions */
-// /* $begin siopublic */
-
-// ssize_t sio_puts(char s[]) /* Put string */
-// {
-//     return write(STDOUT_FILENO, s, sio_strlen(s)); //line:csapp:siostrlen
-// }
-
-// ssize_t sio_putl(long v) /* Put long */
-// {
-//     char s[128];
-
-//     sio_ltoa(v, s, 10); /* Based on K&R itoa() */ //line:csapp:sioltoa
-//     return sio_puts(s);
-// }
-
-// void sio_error(char s[]) /* Put error message and exit */
-// {
-//     sio_puts(s);
-//     _exit(1); //line:csapp:sioexit
-// }
-// /* $end siopublic */
