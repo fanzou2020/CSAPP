@@ -79,6 +79,7 @@ struct job_t *getjobjid(struct job_t *jobs, int jid);
 int pid2jid(pid_t pid); 
 void listjobs(struct job_t *jobs);
 
+int isnumber(char *num);
 void usage(void);
 void unix_error(char *msg);
 void app_error(char *msg);
@@ -294,10 +295,24 @@ int builtin_cmd(char **argv)
 {
     const char * cmd = argv[0];
 
-    if (strcmp(cmd, "quit") == 0) exit(0);
+    if (!strcmp(cmd, "quit")) {
+        exit(0);
+        return 1;
+    }
 
-    if (strcmp(cmd, "jobs") == 0) {
+    if (!strcmp(cmd, "jobs")) {
         listjobs(jobs);
+        fflush(stdout);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "bg")) {
+        do_bgfg(argv);
+        return 1;
+    }
+
+    if (!strcmp(cmd, "fg")) {
+        do_bgfg(argv);
         return 1;
     }
 
@@ -309,6 +324,74 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    struct job_t *job;    
+    int isbg = !strcmp(argv[0], "bg");
+    sigset_t mask_sigchld, prev_one;
+
+
+    /* Some preparations */
+    if (argv[1] == NULL) {
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
+        return;
+    }
+
+    int isjid = ('%' == argv[1][0]);
+
+    if (isjid) {
+        char *jid = &argv[1][1];
+        if (!isnumber(jid)) {
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
+        }
+
+        job = getjobjid(jobs, atoi(jid));
+        if (job == NULL) {
+            printf("no such job\n");
+            return;
+        }
+    }
+    else {
+        if (!isnumber(argv[1])) {
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
+        }
+        
+        job = getjobpid(jobs, atoi(argv[1]));
+        if (job == NULL) {
+            printf("no such process\n");
+            return;
+        }
+    }
+
+    if (isbg && job->state != ST) {
+        printf("bg error - Job is not STOPPED.\n");
+        return;
+    } 
+    if (!isbg && !(job->state == ST || job->state == BG)) {
+        printf("fg error- Job is not STOPPED or in BACKGROUND.\n");
+        return;
+    }
+
+    /* Block SIGCHLD, modify job status */
+    Sigfillset(&mask_sigchld);
+    Sigprocmask(SIG_BLOCK, &mask_sigchld, &prev_one);
+
+    Kill(-(job->pid), SIGCONT);  /* Sen SIGCONT to process */
+
+    if (isbg) {
+        listjobs(job);
+        job->state = BG;
+    } else {
+        job->state = FG;
+    }
+
+    Sigprocmask(SIG_SETMASK, &prev_one, NULL);  /* Restore mask */
+
+    if (!isbg) {
+        waitfg(job->pid);
+    }
+
+
     return;
 }
 
@@ -416,13 +499,13 @@ void sigtstp_handler(int sig)
 
     if (fg_pid == 0) return;
 
-    /* Update Job status to stopped in jobs list */
     Sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+    Kill(-fg_pid, SIGTSTP); /* Send SIGTSTP to foreground process group */
+
+    /* Update Job status to stopped in jobs list */
     struct job_t * fg_job= getjobpid(jobs, fg_pid);
     fg_job->state = ST;
     Sigprocmask(SIG_SETMASK, &prev_all, NULL);
-
-    Kill(-fg_pid, SIGTSTP); /* Send SIGTSTP to foreground process group */
 
     errno = olderrno;
     return;
@@ -590,6 +673,21 @@ void listjobs(struct job_t *jobs)
 /***********************
  * Other helper routines
  ***********************/
+
+/* return 1 if isnumber, otherwise return 0 */
+int isnumber(char *num) 
+{
+    int i = 0;
+    while (num[i] != '\0') {
+        if (!isdigit(num[i])) {
+            return 0;
+        }
+        i++;
+    }
+    return 1;
+}
+
+
 
 /*
  * usage - print a help message
